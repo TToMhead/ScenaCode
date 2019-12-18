@@ -4328,7 +4328,7 @@ void ShelterMergeSort(EscapeAgentInfo* escapeAgentInfo, KnapsackInfo knapsackInf
     shelterInfo[j].MergeSort(0, knapsackInfo.getNumberAgent() - 1);
   }
 
-  cout << "after Result------------" << endl; //comment
+  cout << "after Result------------" << endl; //commen
   for(int i=0; i < knapsackInfo.getNumberShelter(); i++){
     cout << endl;
     for(int j=0; j < knapsackInfo.getNumberAgent(); j++)
