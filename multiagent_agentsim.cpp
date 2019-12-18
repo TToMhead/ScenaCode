@@ -4333,6 +4333,7 @@ void ShelterMergeSort(EscapeAgentInfo* escapeAgentInfo, KnapsackInfo knapsackInf
     cout << endl;
     for(int j=0; j < knapsackInfo.getNumberAgent(); j++)
        cout << "shelterInfo[" << i << "].getShelterGain[" << j << "]:" << shelterInfo[i].getAgentGain(j) << "\tAgentId:" << shelterInfo[i].getAgentId(j) << endl;
+       cout << "Handicapped?" << shelterInfo[i].getAgentResource.GetProfileName() << endl; //Tanaka added
   }
 
 }
