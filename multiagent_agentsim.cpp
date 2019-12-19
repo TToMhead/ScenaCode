@@ -4315,14 +4315,19 @@ void ShelterMergeSort(EscapeAgentInfo* escapeAgentInfo, KnapsackInfo knapsackInf
     for(int j=0; j < knapsackInfo.getNumberShelter(); j++){
       shelterInfo[j].setAgentGain(escapeAgentInfo[i].getAgentGain(j));
       shelterInfo[j].setAgentId(escapeAgentInfo[i].getAgentId());
-      shelterInfo[j].setAgentResource(escapeAgentInfo[i].getAgentResource()); //Tanaka added
+      if (escapeAgentInfo[i].getAgentResource().GetProfileName() == "Agent") {
+      //shelterInfo[j].setAgentProfile(escapeAgentInfo[i].getAgentResource().GetProfileName()); //Tanaka added
+      shelterInfo[j].setAgentProfile(0);
+       } else {
+      shelterInfo[j].setAgentProfile(1); //Tanaka added
+      }
     }
   }
    cout << "before------------" << endl;
    for(int i=0; i < knapsackInfo.getNumberShelter(); i++)
      for(int j=0; j < knapsackInfo.getNumberAgent(); j++){
         cout << "shelterInfo[" << i << "].getShelterGain[" << j << "]:" << shelterInfo[i].getAgentGain(j) << "\tsuffix:" << shelterInfo[i].getAgentId(j) << endl;
-        cout << "Profile=" << shelterInfo[i].getAgentResourcees(j).GetProfileName() << endl; //Tanaka added
+        cout << "Profile=" << shelterInfo[i].getAgentProfile(j) << endl; //Tanaka added
     }
 
   for(int j=0; j < knapsackInfo.getNumberShelter(); j++){ //各避難所ごとのAgent利得リストのソーティング
@@ -4336,7 +4341,7 @@ void ShelterMergeSort(EscapeAgentInfo* escapeAgentInfo, KnapsackInfo knapsackInf
     cout << endl;
     for(int j=0; j < knapsackInfo.getNumberAgent(); j++){
        cout << "shelterInfo[" << i << "].getShelterGain[" << j << "]:" << shelterInfo[i].getAgentGain(j) << "\tAgentId:" << shelterInfo[i].getAgentId(j) << endl;
-       cout << "Profile=" << shelterInfo[i].getAgentResourcees(j).GetProfileName() << endl; //Tanaka added
+       cout << "Profile=" << shelterInfo[i].getAgentProfile(j) << endl; //Tanaka added
    }
   }
 
