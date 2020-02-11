@@ -25,6 +25,10 @@
 #include <sstream>
 #include <string>
 
+//added Jan 14th
+#include <cstdlib>
+#include <dirent.h>
+
 namespace MultiAgent {
 
 #ifdef MULTIAGENT_DEBUG
@@ -48,8 +52,8 @@ bool fileFlag = false;  //Current Directoryに読み込みファイルが存在�
 bool countFlag = false; //Agentの情報を取得しているかどうか
 
 bool debugMode = false; //DebugModeの切替変数
-bool marginFlag = true;  //marginを避難場所のキャパシティに設定する切替変数
-float marginRate = 0.2;   //margin割合
+bool marginFlag = false;  //marginを避難場所のキャパシティに設定する切替変数
+float marginRate = 0.1;   //margin割合
 bool randomSeedFlag = false; //Random選択の場合に時間によってSeedが変化する(実効の度に結果が変わる) ※これは初期位置も変化するためRandomの時以外使用しないように
 //--------------------------------------------------------------------------------------------------
 
@@ -385,9 +389,10 @@ Agent::Agent(
     RoadIdType roadId;
     
     //debug by umeki
-    //std::cout << "---------Agent class-----" << std::endl;
+    std::cout << "---------Agent class-----" << std::endl;
     Vertex positionU = theAgentGisPtr->GetVertex(currentPositionId.id);
     //std::cout << "GetCurrentPosition::" << GIS_NO << std::endl;
+    std::cout << "GetCurrentPosition::"  << std::endl;
 
     if (currentPositionId.type == GIS_BUILDING) {
         const Building& building = subsystem.GetBuilding(currentPositionId.id);
@@ -397,9 +402,9 @@ Agent::Agent(
         roadId = building.GetNearestEntranceRoadId(position);
 
         //debug by umeki
-        //std::cout << "Agent(position)_Building:" << position.x <<  ",  " << position.y << std::endl;
-        //std::cout << "Agent(lastVertexId)_Building:" << lastVertexId << std::endl;
-        //std::cout << "Agent(roadId)_Building:" << roadId << std::endl;
+        std::cout << "Agent(position)_Building:" << position.x <<  ",  " << position.y << std::endl;
+        std::cout << "Agent(lastVertexId)_Building:" << lastVertexId << std::endl;
+        std::cout << "Agent(roadId)_Building:" << roadId << std::endl;
         
                 // Umeki part
                 // choice initialLocationType = RandomRoad
@@ -413,9 +418,9 @@ Agent::Agent(
         //std::cout << "Road.id::" << road.GetRoadId() << std::endl;
         
         position = road.GetRandomPosition(resource.GetRandomNumberGenerator());
-        //std::cout << "Agent(position):" << position.x <<  ",  " << position.y << std::endl;
+        std::cout << "Agent(position):" << position.x <<  ",  " << position.y << std::endl;
         lastVertexId = road.GetNearestEntranceVertexId(position);
-        //std::cout << "Agent(lastVertexId):" << lastVertexId << std::endl;
+        std::cout << "Agent(lastVertexId):" << lastVertexId << std::endl;
         /*  There is not Entrance in Road. So this part is not necesarry
            //roadId = road.GetNearestEntranceRoadId(position);
            //std::cout << "Agent(roadId):" << roadId << std::endl;
@@ -445,8 +450,8 @@ Agent::Agent(
     
     //debug by umeki
     //countAgent1++;
-    //std::cout << "initAgentId::" <<  initAgentId << "__AgentId::" << agentId << std::endl;
-    //std::cout << "___position.x:" << position.x << "___position.y:" << position.y << std::endl;
+    std::cout << "initAgentId::" <<  initAgentId << "__AgentId::" << agentId << std::endl;
+    std::cout << "___position.x:" << position.x << "___position.y:" << position.y << std::endl;
     //std::cout << "AgentCount::" << countAgent1 << std::endl;
 
     for(size_t i = 0; i < NUMBER_TIMESTEP_SNAPSHOTS; i++) {
@@ -972,7 +977,7 @@ void Agent::DecideRoute(const AgentBehaviorType& specifiedBehavior)
         } else {
 
             if (destPositionId == UNREACHABLE_POSITION_ID) { //目的地が到達不可能な場所ならば
-
+                  //cout << "UNREACHABLE! UNREACHABLE!" << endl;
                 destVertexId = INVALID_VERTEX_ID;
 
                 // CurrentTask() will return normal or interrupted task due to "currentIsInterruptTask" flag.
@@ -1373,7 +1378,7 @@ void Agent::SetCurrentDestinationToUnreachablePosition()
     if (extraDestPoiId != UNREACHABLE_POSITION_ID) {
         unreachablePositionIds.push_back(extraDestPoiId);
     }
-
+    //cout << "SCDAddUnreachablePositions" << endl; Tanaka debug
     (*this).AddUnreachablePositions(unreachablePositionIds, false/*byCommunication*/);
 }
 
@@ -1401,6 +1406,7 @@ void Agent::AddUnreachablePositions(
     if (unreachableDestinationIds.find(destPositionId) != unreachableDestinationIds.end()) {
 
         if ((*this).WaitingAtDestinationEntrace()) {
+            //cout << "PeopleGiveupEntrance" << endl; Tanaka debug
             theAgentGisPtr->PeopleGiveUpEntrance(resource, destPositionId);
         }
 
@@ -1408,6 +1414,7 @@ void Agent::AddUnreachablePositions(
             destinationChangeByCommunicationTrace.SetValue(*destinationChangeByCommunicationTrace + 1);
         }
         destPositionId = UNREACHABLE_POSITION_ID;
+        //cout << "recal" << endl; Tanaka debug
         recalculateRoute = true;
     }
 }
@@ -1420,9 +1427,10 @@ void Agent::ChangeToSpecificDestination(
     AgentResource resource(this);
 
     if ((*this).WaitingAtDestinationEntrace()) {
+        cout << "GiveupEntrance" << endl;
         theAgentGisPtr->PeopleGiveUpEntrance(resource, currentPositionId);
     }
-
+    cout << "ChangeDestination" << endl;
     (*this).SetDestination(initDestPositionId, false/*isMultipleDestinations*/, byCommunication);
 
     const TimeType currentTime = simulatorPtr->CurrentTime();
@@ -1523,10 +1531,11 @@ void Agent::IncrementTime(const size_t threadNumber)
         lastBehaviorType,
         resource.GetBehaviorType());
 
+
     // statistics/traces
     const Vertex& currentPos = (*this).GetCurrentPosition();
     const Vertex& nextPos = (*this).GetNextPosition();
-
+    
     if (utility1StatPtr != nullptr) {
         utility1StatPtr->RecordStatValue(resource.Utility1());
     }
@@ -1554,16 +1563,18 @@ void Agent::IncrementTime(const size_t threadNumber)
 
             if(agentAddCount == agentArrivedCount){
                 std::ofstream("./result.csv");
+                std::ofstream("/Users/tomoki-t/Desktop/filetest/result.csv");
                 std::ofstream("./result2_congestion.csv");
                 cout << "Agent Escape End" << "\tEnd Time::" << resource.TotalTravelTime() << endl;
-                fstream writing_file, writing_file_congestion;
+                fstream writing_file, writing_file2, writing_file_congestion;
                 writing_file.open("./result.csv", std::ios::out);   //scenargie directory:[visuallab/scemtemp~~/sim] in visuallab
+                writing_file2.open("/Users/tomoki-t/Desktop/filetest/result.csv", std::ios::out);
                 writing_file_congestion.open("./result2_congestion.csv", std::ios::out);
 
                 // 被災者情報リストCSVの作成
                 for(int i=0; i < agentAddCount; i++){
                     if(i == 0){
-                        writing_file << "AgentId,Congestion,TotalTravelTime,TotalTravelGain,TurnOffCount,shelterPrefix,";
+                        writing_file << "AgentId,Profile,Congestion,TotalTravelTime,TotalTravelGain,TurnOffCount,shelterPrefix,";
                         for(int j=0; j < escapeAgentInfoTemp[i].getShelterNumber(); j++)
                             writing_file << "shelterGainNo" << j << ",";
                         writing_file << endl;
@@ -1572,6 +1583,7 @@ void Agent::IncrementTime(const size_t threadNumber)
                             << escapeAgentInfoTemp[i].totalTravelGain << endl;
                     
                     writing_file << escapeAgentInfoTemp[i].getObjectAgentId() << ","    //AgentId
+                                 << escapeAgentInfoTemp[i].getAgentResource().GetProfileName() << "," //Profile
                                 << escapeAgentInfoTemp[i].congestion << ","             //Congestion
                                 << escapeAgentInfoTemp[i].totalTravelTime << ","        //TotalTravelTime
                                 << escapeAgentInfoTemp[i].totalTravelTime * -1.0 << "," //TotalTravelGain
@@ -1582,6 +1594,31 @@ void Agent::IncrementTime(const size_t threadNumber)
                     }
                     writing_file << endl;
                 }
+
+                // 再シミュレーション用被災者情報リストCSVの作成 Jan16th Tanaka added
+                for(int i=0; i < agentAddCount; i++){
+                    if(i == 0){
+                        writing_file2 << "AgentId,Profile,Congestion,TotalTravelTime,TotalTravelGain,TurnOffCount,shelterPrefix,";
+                        for(int j=0; j < escapeAgentInfoTemp[i].getShelterNumber(); j++)
+                            writing_file2 << "shelterGainNo" << j << ",";
+                        writing_file2 << endl;
+                    }
+                    //cout << escapeAgentInfoTemp[i].getObjectAgentId() << "I want to get agentTotalDistance::"
+                      //      << escapeAgentInfoTemp[i].totalTravelGain << endl;
+                    
+                    writing_file2 << escapeAgentInfoTemp[i].getObjectAgentId() << ","    //AgentId
+                                << escapeAgentInfoTemp[i].getAgentResource().GetProfileName() << "," //Profile
+                                << escapeAgentInfoTemp[i].congestion << ","             //Congestion
+                                << escapeAgentInfoTemp[i].totalTravelTime << ","        //TotalTravelTime
+                                << escapeAgentInfoTemp[i].totalTravelTime * -1.0 << "," //TotalTravelGain
+                                << escapeAgentInfoTemp[i].getTurnOffCount() << ","      //TurnOff Count(たらい回し)
+                                << escapeAgentInfoTemp[i].getShelterPrefix() << ",";    //ObjectiveShelterId
+                    for(int j=0; j < escapeAgentInfoTemp[i].getShelterNumber(); j++){   //each shelterGain
+                        writing_file2 << escapeAgentInfoTemp[i].getAgentGain(j) << ",";
+                    }
+                    writing_file2 << endl;
+                }
+
 
                 // 時系列混雑リストCSVの作成
                 for(int i=0; i < MAX_SIM; i++){
@@ -1740,6 +1777,7 @@ void Agent::AssignInterruptTask()
     AgentResource resource(this);
 
     if ((*this).WaitingAtDestinationEntrace()) {
+        cout << "GiveupEntrance" << endl;
         theAgentGisPtr->PeopleGiveUpEntrance(resource, currentPositionId);
     }
 
@@ -1753,7 +1791,7 @@ void Agent::AssignInterruptTask()
     task.GetTimeLine(resource, currentTaskStartTime, timeToSearchRoute);
 
     destPositionId = UNREACHABLE_POSITION_ID;
-
+       cout << "RecalculateRoute" << endl;
     (*this).RecalculateRoute(simulatorPtr->CurrentTime());
 }
 
@@ -2794,10 +2832,10 @@ void AgentResource::SetDestination(
     const bool byCommunication)
 {
     (*this).CheckAgentAvailability();
-
+    cout << "SetDestination" << endl;
     const GisSubsystem& subsystem = agentPtr->theAgentGisPtr->GetSubsystem();
-    const VertexIdType destVertexId = subsystem.GetNearestVertexId(positionId, position);
-
+    const VertexIdType destVertexId = subsystem.GetNearestVertexId(positionId, position); //scensim_gis.cpp L13105
+    //ここでエラー？
     agentPtr->ChangeToSpecificDestination(positionId, destVertexId, byCommunication);
 }
 
@@ -2806,7 +2844,7 @@ void AgentResource::AddUnreachablePositions(
     const bool byCommunication)
 {
     (*this).CheckAgentAvailability();
-
+    cout << "AddUnreachablePositions" << endl;
     agentPtr->AddUnreachablePositions(unreachablePositionIds, byCommunication);
 }
 
@@ -4317,33 +4355,35 @@ void ShelterMergeSort(EscapeAgentInfo* escapeAgentInfo, KnapsackInfo knapsackInf
       shelterInfo[j].setAgentId(escapeAgentInfo[i].getAgentId());
       if (escapeAgentInfo[i].getAgentResource().GetProfileName() == "Agent") {
       //shelterInfo[j].setAgentProfile(escapeAgentInfo[i].getAgentResource().GetProfileName()); //Tanaka added
-      shelterInfo[j].setAgentProfile(0);
+      shelterInfo[j].setAgentProfile(1);
        } else {
-      shelterInfo[j].setAgentProfile(1); //Tanaka added
+      shelterInfo[j].setAgentProfile(0); //Tanaka added
       }
     }
   }
    cout << "before------------" << endl;
-   for(int i=0; i < knapsackInfo.getNumberShelter(); i++)
-     for(int j=0; j < knapsackInfo.getNumberAgent(); j++){
-        cout << "shelterInfo[" << i << "].getShelterGain[" << j << "]:" << shelterInfo[i].getAgentGain(j) << "\tsuffix:" << shelterInfo[i].getAgentId(j) << endl;
-        cout << "Profile=" << shelterInfo[i].getAgentProfile(j) << endl; //Tanaka added
-    }
+   //for(int i=0; i < knapsackInfo.getNumberShelter(); i++)
+   //  for(int j=0; j < knapsackInfo.getNumberAgent(); j++){
+   //     cout << "shelterInfo[" << i << "].getShelterGain[" << j << "]:" << shelterInfo[i].getAgentGain(j) << "\tsuffix:" << shelterInfo[i].getAgentId(j) << endl;
+   //     cout << "Profile=" << shelterInfo[i].getAgentProfile(j) << endl; //Tanaka added
+    //}
 
   for(int j=0; j < knapsackInfo.getNumberShelter(); j++){ //各避難所ごとのAgent利得リストのソーティング
     cout << "================================" << knapsackInfo.getNumberAgent() << endl;
     shelterInfo[j].initializeTemp(knapsackInfo.getNumberAgent());
     shelterInfo[j].MergeSort(0, knapsackInfo.getNumberAgent() - 1);
+    shelterInfo[j].initializeTemp(knapsackInfo.getNumberAgent());
+    shelterInfo[j].BubbleSort(knapsackInfo.getNumberAgent() - 1); //災害弱者は先頭に持っていく
   }
 
   cout << "after Result------------" << endl; //commen
-  for(int i=0; i < knapsackInfo.getNumberShelter(); i++){
-    cout << endl;
-    for(int j=0; j < knapsackInfo.getNumberAgent(); j++){
-       cout << "shelterInfo[" << i << "].getShelterGain[" << j << "]:" << shelterInfo[i].getAgentGain(j) << "\tAgentId:" << shelterInfo[i].getAgentId(j) << endl;
-       cout << "Profile=" << shelterInfo[i].getAgentProfile(j) << endl; //Tanaka added
-   }
-  }
+  //for(int i=0; i < knapsackInfo.getNumberShelter(); i++){
+  //  cout << endl;
+  //  for(int j=0; j < knapsackInfo.getNumberAgent(); j++){
+   //    cout << "shelterInfo[" << i << "].getShelterGain[" << j << "]:" << shelterInfo[i].getAgentGain(j) << "\tAgentId:" << shelterInfo[i].getAgentId(j) << endl;
+   //    cout << "Profile=" << shelterInfo[i].getAgentProfile(j) << endl; //Tanaka added
+  // }
+ // }
 
 }
 
@@ -4364,14 +4404,14 @@ double DecideShelter(ShelterInfo* shelterInfo, EscapeAgentInfo* escapeAgentInfo,
       for(int j=0; j < knapsackInfo.getNumberShelter(); j++){ //各避難所の一番大きい利得を比較
         int agentNumber = shelterInfo[j].getSuffix();                                                                                                                                                                                                                         
         if(shelterInfo[j].checkShelter() == true){  //このシェルターがすでに満杯じゃないかの判定
-          cout << j+1 << "番目" << endl;
+          // cout << j+1 << "番目" << endl;
           while(decidedAgentId[shelterInfo[j].getAgentId(agentNumber)] == 1){ //その避難者が避難場所未決定かを判定
-            cout << "----check-----agentNumber:" << shelterInfo[j].getAgentId(agentNumber) << endl;
+            //cout << "----check-----agentNumber:" << shelterInfo[j].getAgentId(agentNumber) << endl;
             shelterInfo[j].addSuffix();
             agentNumber = shelterInfo[j].getSuffix();
           }
           float shelterGain = shelterInfo[j].getAgentGain( agentNumber ); //利得取得
-
+          //計算式を変更予定
           if( maxGain < shelterGain ){  //一番大きい利得判定
             maxGain = shelterGain;
             iAgentId = shelterInfo[j].getAgentId(agentNumber);
@@ -4402,7 +4442,9 @@ double DecideShelter(ShelterInfo* shelterInfo, EscapeAgentInfo* escapeAgentInfo,
           cout << "shelterInfo[" << z << "]\tcurrentPersonNumber:" << shelterInfo[z].getCurrentPerson() <<"\tAllowableValue:" << shelterInfo[z].getAllowableValue() << endl;
         }
         for(int z=0; z < knapsackInfo.getNumberAgent(); z++){
+            if(decidedAgentId[z] == 1){
           cout << "decidedAgentId[" << z << "]:" << decidedAgentId[z] << endl;
+      }
         }
       } else {
         cout << "全ての収容所が満杯になりました" << endl;
@@ -4471,19 +4513,27 @@ void AgentProfileAndTaskTable::GetLocationId(
     const GisSubsystem& subsystem = theAgentGisPtr->GetSubsystem();
     const AgentLocationType locationType = GetLocationType(locationInfo.locationName);
 
+    //taskTablePtr->GetInitialLocationId(theAgentGisPtr, homePositionId, resource);
+
+    //currentPositionId = homePositionId;
+
+
     const GisPositionIdType currentPositionId = resource.PositionId();
 
     set<GisPositionIdType> ignoredDestinationIds = resource.UnreachableDestinationIds();
     
-//    std::cout << "\nAgemtProfileAndTaskTable::GetLocationId-----------" << resource.AgentId() << std::endl;
+    //Tanaka debug
+    //std::cout << "\nAgemtProfileAndTaskTable::GetLocationId-----------" << resource.AgentId() << std::endl;
     //std::cout << "locationInfo:" << locationInfo.locationChoiceType << std::endl;
     //std::cout << "locationType:" << locationType << std::endl;
     //cout << "locationInfoName:" << locationInfo.locationName << endl;
     //std::cout << "isMultiplePositions:" << (isMultiplePositions ? "True" : "False" ) << std::endl;
 
-    
+
+
     Vertex currentPositionU = theAgentGisPtr->GetVertex(currentPositionId.id);
     
+    //Tanaka debug
     //std::cout << "currentPositionId.id=" << currentPositionId.id << std::endl;
     //std::cout << "currentPositionId.type=" << currentPositionId.type << std::endl;
     //std::cout << "currentPosition.x=" << currentPositionU.x << std::endl;
@@ -4499,6 +4549,11 @@ void AgentProfileAndTaskTable::GetLocationId(
     HighQualityRandomNumberGenerator& randomNumberGeneratorForDestinationChoice =
         resource.GetRandomNumberGeneratorForDestinationChoice();
     
+    //Tanaka added
+    //Vertex positionF;  
+    //VertexIdType lastVertexId;
+    //
+
     if (locationType == AGENT_LOCATION_NONE) {
 
         locationCandidateIds.push_back(currentPositionId);
@@ -4541,19 +4596,32 @@ void AgentProfileAndTaskTable::GetLocationId(
             randomNumberGeneratorForDestinationChoice,
             found,
             locationId);
+
+    　//const Road& road = subsystem.GetRoad(currentPositionId.id);
+
+        //debug by umeki
+      //  std::cout << "---------currentPositionId=GIS_ROAD---------" << std::endl;
+      //  std::cout << "Agent.resouce::" << resource.GetRandomNumberGenerator().GenerateRandomDouble()  << std::endl;
+      //cout << "Road.id::" << road.GetRoadId() << std::endl;
+        
+      
+      //positionF = road.GetRandomPosition(resource.GetRandomNumberGenerator());
+      //cout << "Agent(position):" << positionF.x <<  ",  " << positionF.y << endl;
+      //lastVertexId = road.GetNearestEntranceVertexId(positionF);
+      //cout << "Agent(lastVertexId):" << lastVertexId << endl;
         
         //debug by umeki
-        //std::cout << "GetLocationId_RANDOM_ROAD:locationId;;" << locationId.id << std::endl;
+        std::cout << "GetLocationId_RANDOM_ROAD:locationId;;" << locationId.id << std::endl;
         
-//        cout << resource.AgentId() << "RandomRoad::::" << locationInfo.locationChoiceType <<
-//                "\t::" << resource.GetProfileName() << endl;
+        cout << resource.AgentId() << "RandomRoad::::" << locationInfo.locationChoiceType <<
+               "\t::" << resource.GetProfileName() << endl;
 
         if (found) {
             locationCandidateIds.push_back(locationId);
             // debug by umeki
-            //for(int i = 0; i < locationCandidateIds.size(); i++){
-            //    std::cout << "foundlocationCandidateIds[" << i << "]:" << locationCandidateIds[i].id << "::size:" << locationCandidateIds.size() << std::endl;
-            //}
+            for(int i = 0; i < locationCandidateIds.size(); i++){
+                std::cout << "foundlocationCandidateIds[" << i << "]:" << locationCandidateIds[i].id << "::size:" << locationCandidateIds.size() << std::endl;
+            }
         } else {
             cerr << "There is no road for random road specification." << endl;
             exit(1);
@@ -4661,6 +4729,8 @@ void AgentProfileAndTaskTable::GetLocationId(
         if(decideFlag == false && countFlag == true){
             cout << "SettingKnapsackParam()" << endl;
             SettingKnapsackParam(
+                theAgentGisPtr,
+                locationInfo,
                 subsystem,
                 locationCandidateIds,
                 fileFlag);
@@ -4728,6 +4798,8 @@ void AgentProfileAndTaskTable::GetLocationId(
             KnapsackInfo knapsackInfo(agentAddCount, shelterTotal); //AgentとShelterの総数を管理する
             ShelterInfo shelterInfo[knapsackInfo.getNumberShelter()];
             SettingShelParam(
+                    theAgentGisPtr,
+                    //locationInfo,
                     subsystem,
                     locationCandidateIds,
                     shelterInfo,
@@ -4768,14 +4840,51 @@ void AgentProfileAndTaskTable::GetLocationId(
 
         for(size_t i = 0; i < locationCandidateIds.size(); i++) {
 
-            const Vertex position = subsystem.GetPositionVertex(locationCandidateIds[i]);
+        const Vertex position = subsystem.GetPositionVertex(locationCandidateIds[i]);
 
+        if (currentPositionId.type == GIS_ROAD || currentPositionId.type == GIS_BUILDING || currentPositionId.type == GIS_PARK) {
+
+        shared_ptr<AgentRoute> newRoutePtr(new AgentRoute());
+        //AgentRoute theRoute;
+        //cout << "Is it here multiagent_agentsim.cpp L4843?" << endl;
+        const VertexIdType lastVertexId = subsystem.GetNearestVertexId(currentPositionId, resource.Position());
+        //cout << "Is it here multiagent_agentsim.cpp L4845?" << endl;
+        const VertexIdType destVertexId = subsystem.GetNearestVertexId(locationCandidateIds[i], position);
+        //Tanaka added
+        theAgentGisPtr->SearchRoadRoute(
+           resource,
+           lastVertexId,
+           destVertexId,
+           AGENT_BEHAVIOR_PEDESTRIAN,
+           *newRoutePtr);
+
+        //Tanaka debug
+        //cout << "lastVertexId:" << lastVertexId << endl;
+        //cout << "destVertexId:" << destVertexId << endl;
+
+        double distance = resource.Position().DistanceTo(position);
+
+        double distanceR = newRoutePtr->totalCost.TravelDistance();
+
+        //Tanaka debug
+        //std::cout << ":distance to shelter[" << i << "]" << distance << std::endl;
+        //std::cout << ":distanceR to shelter[" << i << "]" << distanceR << std::endl;
+
+            if (distanceR < minDistance) {
+                minDistance = distanceR;
+                positionId = locationCandidateIds[i];
+            }
+        } else {
             double distance = resource.Position().DistanceTo(position);
 
             if (distance < minDistance) {
                 minDistance = distance;
                 positionId = locationCandidateIds[i];
             }
+
+        }
+
+
         }
         
         if(moveFlag == true){
@@ -4805,6 +4914,8 @@ void AgentProfileAndTaskTable::GetLocationId(
             ShelterInfo shelterInfo[knapsackInfo.getNumberShelter()];
             cout << "agentCount::" << knapsackInfo.getNumberAgent() << "\tshelterCount::" << knapsackInfo.getNumberShelter() << endl;
             SettingShelParam(
+                    theAgentGisPtr,
+                    //locationInfo,
                     subsystem,
                     locationCandidateIds,
                     shelterInfo,
@@ -4875,15 +4986,45 @@ void AgentProfileAndTaskTable::GetLocationId(
     } else if(locationInfo.locationChoiceType == AGENT_LOCATION_CHOICE_KNAPSACK){
 //        std::cout << "locationInfo.LocationChoiceType:::Choice_Knapsack"<< resource.AgentId() << std::endl;
         //To write in a later time by Umeki
-        ifstream ifs("./result.csv");
+        //ifstream ifs("./result.csv");
+        std::ifstream ifs;
+        ifs.open("/Users/tomoki-t/Desktop/filetest/result.csv"); //再シミュレーション用ファイル置き場
         
         int agentCountCsv = -1;
         
+        //added Jan14th 確認用
+        //const char* path = "./";
+        //DIR *dp;
+        //dirent* entry;
+
+        //dp = opendir(path);
+        //if (dp==NULL) {
+        //std::cout << "Folder Empty" << std::endl;
+           // exit(1);
+        //do {
+        //entry = readdir(dp);
+        //if (entry != NULL)
+        //std::cout << path << entry->d_name << std::endl;
+       //} else {
+       // std::cout << "Folder has files" << std::endl;
+       // do {
+       // entry = readdir(dp);
+       // if (entry != NULL)
+       // std::cout << path << entry->d_name << std::endl;
+       // } while (entry != NULL);
+       //}
+       //while (entry != NULL);
+        //added Jan14th
+
+
+        //if(fileFlag == false){
+        //    cout << "FFisFalse" << endl;
+        //}
         
         if(ifs.is_open() && fileFlag == false){
             cout << "atta" << endl;
             fileFlag = true;
-            string filename = "./result.csv";
+            string filename = "/Users/tomoki-t/Desktop/filetest/result.csv"; //再シミュレーション用ファイル置き場
             std::ifstream reading_file;
             reading_file.open(filename, std::ios::in);
 
@@ -4930,7 +5071,7 @@ void AgentProfileAndTaskTable::GetLocationId(
                             escapeAgentInfoTemp[agentCountCsv - 1].clearAgentGain();
                         }
                     } 
-                    if(agentCountCsv > 0 && i > 5){  //ヘッダ情報の読み飛ばしと前六つのパラメータ読み飛ばし
+                    if(agentCountCsv > 0 && i > 6){  //ヘッダ情報の読み飛ばしと前7つのパラメータ読み飛ばし
 //                        cout << "csv:" << escapeAgentInfoTemp[agentCountCsv - 1].checkAgentGainNumber()
 //                                << "\tAddCount:" << wordsList.size() - 5 << "NumberOfAgentNow" << agentCountCsv <<  endl;
                         assert(escapeAgentInfoTemp[agentCountCsv - 1].getObjectAgentId() == stoi(wordsList[0]));
@@ -4952,11 +5093,19 @@ void AgentProfileAndTaskTable::GetLocationId(
                 cout << "csv:" << agentCountCsv << "\tAddCount:" << agentAddCount << endl;
                 assert(agentCountCsv == agentAddCount); //Csv内の人数と実際のシナリオの人数が一致しているか確認
             }
-            if(decideFlag)  cout << "decideFlag::true" << endl;
-            else cout << "decideFlag::false" << endl;
-            decideFlag = false;
-//            exit(1);
-        }
+           if(decideFlag)  cout << "decideFlag::true" << endl;
+           else cout << "decideFlag::false" << endl;
+           decideFlag = false;
+           // exit(1);
+        } 
+        //else if(ifs.is_open() == false &&　fileFlag == false) {
+        //    cout << "nai?" << endl;
+        //} 
+        //else if(ifs.is_open() &&　fileFlag == true) {
+        //    cout << "aru?" << endl;
+        //} else {
+        //    cout << "nee" << endl;
+        //}
         
 
 
@@ -4971,6 +5120,8 @@ void AgentProfileAndTaskTable::GetLocationId(
             KnapsackInfo knapsackInfo(agentAddCount, shelterTotal); //AgentとShelterの総数を管理する
             ShelterInfo shelterInfo[knapsackInfo.getNumberShelter()];
             SettingShelParam(
+                    theAgentGisPtr,
+                    //locationInfo,
                     subsystem,
                     locationCandidateIds,
                     shelterInfo,
@@ -5022,12 +5173,41 @@ void AgentProfileAndTaskTable::GetLocationId(
             double minDistance = DBL_MAX;
             for(size_t i = 0; i < locationCandidateIds.size(); i++) {
                 const Vertex position = subsystem.GetPositionVertex(locationCandidateIds[i]);
+
+if (currentPositionId.type == GIS_ROAD || currentPositionId.type == GIS_BUILDING || currentPositionId.type == GIS_PARK) {
+
+                shared_ptr<AgentRoute> newRoutePtr(new AgentRoute());
+                 //AgentRoute theRoute;
+
+                 const VertexIdType lastVertexId = subsystem.GetNearestVertexId(currentPositionId, resource.Position());
+                 const VertexIdType destVertexId = subsystem.GetNearestVertexId(currentPositionId, position);
+                 //Tanaka added
+                 theAgentGisPtr->SearchRoadRoute(
+                 resource,
+                 lastVertexId,
+                 destVertexId,
+                 AGENT_BEHAVIOR_PEDESTRIAN,
+                 *newRoutePtr);
+
+                double distance = resource.Position().DistanceTo(position);
+                //Tanaka added
+                double distanceR = newRoutePtr->totalCost.TravelDistance();
+
+                //Tanaka debug
+                //std::cout << ":distance to shelter[" << i << "]" << distance << std::endl;
+                //std::cout << ":distanceR to shelter[" << i << "]" << distanceR << std::endl;
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    positionId = locationCandidateIds[i];
+                }
+            } else {
                 double distance = resource.Position().DistanceTo(position);
                 if (distance < minDistance) {
                     minDistance = distance;
                     positionId = locationCandidateIds[i];
                 }
             }
+        }
             foundPosition = true;
             
             if(moveFlag == true){   //たらい回し発生
@@ -5036,7 +5216,7 @@ void AgentProfileAndTaskTable::GetLocationId(
                 escapeAgentInfoTemp[currentAgentId - minAgentId].addTurnOffCount();
                 //cout << "AgentId;;" << currentAgentId << "\tTurnCount::" << escapeAgentInfoTemp[currentAgentId - minAgentId].getTurnOffCount() << endl;
             }
-          }
+            }
         } 
 
         
@@ -5076,6 +5256,8 @@ void AgentProfileAndTaskTable::SettingAgentParam(
 }
 
 void AgentProfileAndTaskTable::SettingShelParam(
+        const shared_ptr<MultiAgentGis>& theAgentGisPtr, //Tanaka added Jan 24th
+        //const LocationInfo& locationInfo, //Tanaka added Jan 24th
         const GisSubsystem& subsystem,
         vector<GisPositionIdType> locationCandidateIds,
         ShelterInfo* shelterInfo,
@@ -5086,7 +5268,7 @@ void AgentProfileAndTaskTable::SettingShelParam(
 {
 //    cout << "SettingShel" << endl;
 
-
+    //marginrateが人数調整
     //std::cout << "Input Agent:" << resource.AgentId() << "\tcount" << agentAddCount <<  std::endl;
     std::cout << "Input ShelterNumber" << knapsackInfo.getNumberShelter() << std::endl;
 
@@ -5099,6 +5281,10 @@ void AgentProfileAndTaskTable::SettingShelParam(
         else if(marginFlag == false){
             shelterInfo[i].setAllowableValue(building_.GetHumanCapacity());
         }
+        //Tanaka added
+        
+
+
         shelterInfo[i].setShelterId(locationCandidateIds[i]);
         const Vertex position = subsystem.GetPositionVertex(locationCandidateIds[i]);
 
@@ -5108,12 +5294,45 @@ void AgentProfileAndTaskTable::SettingShelParam(
 
         if(fileFlag == false){
             for(int j = 0; j < knapsackInfo.getNumberAgent(); j++){
-
+                 
                 AgentResource resource = escapeAgentInfo[j].getAgentResource();
                 double WalkHumanSpeed = resource.WalkSpeedMetersPerSec();
+
+
+                //const AgentLocationType locationType = GetLocationType(locationInfo.locationName);
+
+                const GisPositionIdType currentPositionId = resource.PositionId();
+                if (currentPositionId.type == GIS_ROAD || currentPositionId.type == GIS_BUILDING || currentPositionId.type == GIS_PARK) {
+                shared_ptr<AgentRoute> newRoutePtr(new AgentRoute());
+                 const VertexIdType lastVertexId = subsystem.GetNearestVertexId(currentPositionId, resource.Position());
+                 const VertexIdType destVertexId = subsystem.GetNearestVertexId(locationCandidateIds[i], position);
+                //Tanaka added
+                 theAgentGisPtr->SearchRoadRoute(
+                 resource,
+                 lastVertexId,
+                 destVertexId,
+                 AGENT_BEHAVIOR_PEDESTRIAN,
+                 *newRoutePtr);
+
+                //Tanaka modify jan24th
                 double distance = resource.Position().DistanceTo(position);
-                double Gain = -1.0 * (distance/WalkHumanSpeed);
+
+                double distanceR = newRoutePtr->totalCost.TravelDistance();
+                //double time = newRoutePtr->totalCost.TravelTime();
+
+                //Tanaka debug
+                //std::cout << "Agent" << j << ":distance to shelter[" << i << "]" << distance << std::endl;
+                //std::cout << "Agent" << j << ":distanceR to shelter[" << i << "]" << distanceR << std::endl;
+                //std::cout << "Agent" << j << ":time to shelter[" << i << "]" << time << std::endl; 
+                double Gain = -1.0 * (distanceR/WalkHumanSpeed);
                 escapeAgentInfo[j].setAgentGain(Gain);
+            } else {
+                double distanceR = resource.Position().DistanceTo(position);
+                double Gain = -1.0 * (distanceR/WalkHumanSpeed);
+                escapeAgentInfo[j].setAgentGain(Gain);
+            }
+                //double Gain = -1.0 * (newRoutePtr->totalCost.TravelTime());
+                //escapeAgentInfo[j].setAgentGain(Gain);
             }
         }
 
@@ -5121,6 +5340,8 @@ void AgentProfileAndTaskTable::SettingShelParam(
 }
 
 void AgentProfileAndTaskTable::SettingKnapsackParam(
+        const shared_ptr<MultiAgentGis>& theAgentGisPtr, //Tanaka added Jan 24th
+        const LocationInfo& locationInfo, //Tanaka added Jan 24th
         const GisSubsystem& subsystem,
         vector<GisPositionIdType> locationCandidateIds,
         bool fileFlag
@@ -5132,6 +5353,8 @@ void AgentProfileAndTaskTable::SettingKnapsackParam(
     KnapsackInfo knapsackInfo(agentAddCount, shelterTotal); //AgentとShelterの総数を管理する
     ShelterInfo shelterInfo[knapsackInfo.getNumberShelter()];
     SettingShelParam(
+            theAgentGisPtr,  //Tanaka added Jan
+            //locationInfo,    //Tanaka added Jan
             subsystem,
             locationCandidateIds,
             shelterInfo,

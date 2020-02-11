@@ -1153,6 +1153,7 @@ private:
 // Umeki add-----------------
 struct EscapeAgentInfo {
   int agentId;
+  //int agentProfile; //Tanaka added
   double congestion;
   double totalTravelTime;
   double totalTravelGain;
@@ -1162,9 +1163,12 @@ struct EscapeAgentInfo {
   int arrivedFlagCount;
 
   EscapeAgentInfo(
-    const int inputAgentId)
+    const int inputAgentId
+    //const int inputAgentProfile
+    )
     :
     agentId(inputAgentId),
+    //agentProfile(inputAgentProfile), //Tanaka added Feb 6th
     congestion(0),
     totalTravelGain(0),
     totalTravelTime(0),
@@ -1175,6 +1179,7 @@ struct EscapeAgentInfo {
   EscapeAgentInfo()
     :
     agentId(0),
+    //agentProfile(0), //Tanaka added Feb 6th
     congestion(0),
     totalTravelGain(0),
     totalTravelTime(0),
@@ -1186,6 +1191,8 @@ struct EscapeAgentInfo {
   bool getNotObeyFlag(){ return notObeyFlag; }
   void setAgentId(int i){ agentId = i; }
   int getAgentId(){ return agentId; }
+  //void setAgentProfile(int i){ agentProfile = i; } //Tanaka added Feb 6th
+  //int getAgentProfile(){ return agentProfile; } //Tanaka added Feb 6th
   void setAgentGain(float Gain){ agentGain.push_back(Gain); }
   void clearAgentGain(){ agentGain.clear(); agentGain.shrink_to_fit(); }
   float getAgentGain(int i){ return agentGain[i]; }
@@ -1204,6 +1211,9 @@ struct EscapeAgentInfo {
 
   void setObjectAgentId(int inputObjectAgentId){ ObjectAgentId = inputObjectAgentId; }
   int getObjectAgentId(){ return ObjectAgentId; }
+  //Tanaka added Feb 6th
+  //void setObjectAgentProfile(int inputObjectAgentProfile){ ObjectAgentProfile = inputObjectAgentProfile; }
+  //int getObjectAgentProfile(){ return ObjectAgentProfile; }
 
   void setShelterId(GisPositionIdType inputShelterId){ purShelterId = inputShelterId; }
   GisPositionIdType getShelterId(){ return purShelterId; }
@@ -1252,14 +1262,16 @@ public:
 
   void setAgentId(int i){ agentId.push_back(i); }
   int getAgentId(int i){ return agentId[i]; }
+  //void setAgentHandicap(int i){ agentId.push_back(i); } //Tanaka added
+  //int getAgentHandicap(int i){ return agentId[i]; } //Tanaka added
   void setAgentGain(double inputGain){ agentGain.push_back(inputGain); }
   double getAgentGain(int i){ return agentGain[i]; }
   void initializeTemp(int i){ tempId.assign(i,0); tempGain.assign(i,0); tempProfile.assign(i,0); }
   //void setAgentResource(AgentResource inputResource){ agentResources.push_back(inputResource); } //Tanaka added
-  //void setAgentProfile(string inputProfile){ agentProfile.push_back(inputProfile); }
-  void setAgentProfile(int i){ agentProfile.push_back(i); }
+  //void setAgentProfile(string inputProfile){ agentProfile.push_back(inputProfile); } //Tanaka added Feb 6th
+  void setAgentProfile(int i){ agentProfile.push_back(i); } //Tanaka added Feb 6th
   //AgentResource getAgentResourcees(int i){ return agentResources[i]; } //Tanaka added
-  //string getAgentProfile(int i){ return agentProfile[i]; }
+  //string getAgentProfile(int i){ return agentProfile[i]; } //Tanaka added Feb 6th
   int getAgentProfile(int i){ return agentProfile[i]; }
 
   void setAllowableValue(int inputAllowableValue){ AllowableValue = inputAllowableValue; }
@@ -1285,11 +1297,37 @@ public:
     }
   }
 
-//"Profileが"
-//void ProfileSort(int left, int right)
-//  {
-    
- // }
+//"Profile=0を優先させる"
+void BubbleSort(int right)
+  {
+    int i, j;
+    //for (i = 0; i < right; i++){
+         //temp[i] = x[i];
+      //   tempGain.at(i) = agentGain[i];
+      //   tempId.at(i) =  agentId[i];
+      //   tempProfile.at(i) = agentProfile[i];
+    //}
+    for(i = 0; i < right; i++){
+        for(j = right; j > i; j--){
+            if (agentProfile[j-1] > agentProfile[j]){
+             tempGain.at(j-1) = agentGain[j];
+             tempId.at(j-1) =  agentId[j];
+             tempProfile.at(j-1) = agentProfile[j];
+             tempGain.at(j) = agentGain[j-1];
+             tempId.at(j) =  agentId[j-1];
+             tempProfile.at(j) = agentProfile[j-1];
+
+             agentGain.at(j-1) = tempGain[j-1];
+             agentId.at(j-1) =  tempId[j-1];
+             agentProfile.at(j-1) = tempProfile[j-1];
+             agentGain.at(j) = tempGain[j];
+             agentId.at(j) =  tempId[j];
+             agentProfile.at(j) = tempProfile[j];
+             //cout << "BubbleSort" << endl;
+         } 
+        }
+    }
+  }
 
 
     /* 所持する利得リストを降順にソーティングする */
@@ -1297,6 +1335,7 @@ public:
   {
      int mid, i, j, k;
 
+    
      if (left >= right)              /* 配列の要素がひとつなら */
          return;                     /* 何もしないで戻る */
                                      /* ここでは分割しているだけ */
@@ -1442,6 +1481,8 @@ public:
         bool notObeyFlag) const;
     
     void SettingShelParam(
+        const shared_ptr<MultiAgentGis>& theAgentGisPtr,
+        //const LocationInfo& locationInfo,
         const GisSubsystem& subsystem,
         vector<GisPositionIdType> locationCandidateIds,
         ShelterInfo* shelterInfo,
@@ -1451,6 +1492,8 @@ public:
     
     
     void SettingKnapsackParam(
+        const shared_ptr<MultiAgentGis>& theAgentGisPtr, //Tanaka added Jan 24th
+        const LocationInfo& locationInfo, //Tanaka added Jan 24th
         const GisSubsystem& subsystem,
         vector<GisPositionIdType> locationCandidateIds,
         bool fileFlag) const;
